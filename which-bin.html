@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Which bin?</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e4e7ea;--ink:#16191c;--mute:#5b636b;--card:#f6f7f8;--line:#c3c9ce;--btn:#16191c;--btnt:#f6f7f8;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15181b;--ink:#eceff1;--mute:#98a1a9;--card:#1f2428;--line:#333a40;--btn:#eceff1;--btnt:#15181b}}
+:root[data-theme="dark"]{--bg:#15181b;--ink:#eceff1;--mute:#98a1a9;--card:#1f2428;--line:#333a40;--btn:#eceff1;--btnt:#15181b}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.45}
+main{max-width:34rem;margin:0 auto;padding:1.5rem 1.25rem 3rem}
+h1{font-size:1rem;font-weight:400;color:var(--mute);margin:0 0 1.25rem}
+.status{font-size:1.1rem;color:var(--mute);margin:0}
+.answer{font-size:clamp(2.4rem,11vw,3.6rem);font-weight:700;line-height:1.02;letter-spacing:-.02em;margin:.2rem 0 .1rem}
+.sub{font-size:1.2rem;margin:0 0 .5rem}
+.when{font-size:1.05rem;margin:0 0 1.5rem}
+.bins{display:flex;gap:1.25rem;align-items:flex-end;margin:0 0 2rem}
+.bin{text-align:center}
+.bin svg{display:block;margin:0 auto .4rem}
+.bin span{font-size:.85rem;color:var(--mute);display:block}
+.note{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:.6rem .8rem;font-size:.9rem;margin:0 0 1.5rem}
+h2{font-size:1rem;margin:0 0 .5rem}
+ul.up{list-style:none;margin:0 0 2rem;padding:0}
+ul.up li{display:flex;gap:.75rem;align-items:center;padding:.55rem 0;border-top:1px solid var(--line)}
+ul.up li:last-child{border-bottom:1px solid var(--line)}
+.dot{display:inline-block;width:.8rem;height:.8rem;border-radius:50%;margin-right:.35rem}
+.d{min-width:8.5rem;color:var(--mute);font-size:.95rem}
+details{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:.75rem .9rem}
+summary{cursor:pointer;font-weight:700}
+label{display:block;font-size:.9rem;margin:1rem 0 .25rem}
+.hint{color:var(--mute);font-size:.82rem;margin:.2rem 0 0}
+input,textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:.5rem}
+textarea{min-height:4.5rem;resize:vertical}
+button{font:inherit;font-weight:700;background:var(--btn);color:var(--btnt);border:0;border-radius:4px;padding:.55rem .9rem;margin-top:1rem;cursor:pointer}
+:focus-visible{outline:3px solid #2f6fb5;outline-offset:2px}
+</style>
+</head>
+<body>
+<main>
+<h1>Which bin? Ashford Borough Council</h1>
+<p class="status" id="status"></p>
+<p class="answer" id="answer"></p>
+<p class="sub" id="sub"></p>
+<p class="when" id="when"></p>
+<div class="bins" id="bins"></div>
+<p class="note" id="note" hidden>Choose your collection day in Settings to see when to put the bin out.</p>
+<h2>Coming up</h2>
+<ul class="up" id="up"></ul>
+<details id="set">
+<summary>Settings</summary>
+<label for="day">Your collection day</label>
+<select id="day"><option value="">Not set</option><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option></select>
+<p class="hint">Printed on the orange tag at the top of your calendar.</p>
+<label for="group">Your calendar</label>
+<select id="group"><option value="1">W1</option><option value="2">W2</option></select>
+<p class="hint">Look for W1 or W2 in the top right corner of your 2026 calendar.</p>
+<label for="over">Changed dates, such as Christmas (optional)</label>
+<textarea id="over" placeholder="2026-12-24 Recycling&#10;2026-12-25 none"></textarea>
+<p class="hint">One per line: a date, then Recycling, General or none. It replaces whatever the normal pattern says for that date.</p>
+<button id="share" type="button">Get a link for neighbours</button>
+<label for="link" id="linkl" hidden>Share this link</label>
+<input id="link" readonly hidden>
+</details>
+</main>
+<script>
+(function(){
+var DAY=864e5,REF=new Date(2026,0,12,12),cfg,first=false;
+var DEF={day:"",group:"1",over:""};
+var T={R:{n:"Recycling",s:"and food waste",c:"#5f9a38"},G:{n:"General waste",s:"and food waste",c:"#43484d"}};
+var $=function(id){return document.getElementById(id)};
+function load(){
+  try{var m=/[#&]c=([^&]+)/.exec(location.hash);if(m)return JSON.parse(decodeURIComponent(escape(atob(m[1]))))}catch(e){}
+  try{var s=localStorage.getItem("whichbin2");if(s)return JSON.parse(s)}catch(e){}
+  first=true;return DEF;
+}
+function today(){var n=new Date();return new Date(n.getFullYear(),n.getMonth(),n.getDate(),12)}
+function add(d,n){return new Date(d.getFullYear(),d.getMonth(),d.getDate()+n,12)}
+function mon(d){return add(d,-((d.getDay()+6)%7))}
+function p2(n){return (n<10?"0":"")+n}
+function iso(d){return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())}
+function wt(d){var w=Math.round((mon(d)-REF)/(7*DAY)),g=((w%2)+2)%2===0;if(cfg.group==="2")g=!g;return g?"G":"R"}
+function overrides(){
+  var o={};(cfg.over||"").split("\n").forEach(function(l){
+    l=l.trim();var m=/^(\d{4})-(\d{1,2})-(\d{1,2})[\s:,-]+(.+)$/.exec(l),d,r;
+    if(m){d=new Date(+m[1],+m[2]-1,+m[3],12);r=m[4]}
+    else if((m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})[\s:,-]+(.+)$/.exec(l))){d=new Date(+m[3],+m[2]-1,+m[1],12);r=m[4]}
+    else return;
+    var t=/none|skip|no coll/i.test(r)?null:/recycl/i.test(r)?"R":/general|refuse|rubbish|black|grey|gray/i.test(r)?"G":undefined;
+    if(t!==undefined)o[iso(d)]={d:d,t:t};
+  });return o;
+}
+function upcoming(){
+  var t0=today(),out=[],i;
+  if(cfg.day){
+    var map={},ov=overrides();
+    for(i=0;i<150;i++){var d=add(t0,i);if(String(d.getDay())===String(cfg.day))map[iso(d)]={d:d,t:wt(d)}}
+    Object.keys(ov).forEach(function(k){if(ov[k].t===null)delete map[k];else if(ov[k].d>=t0)map[k]={d:ov[k].d,t:ov[k].t}});
+    out=Object.keys(map).map(function(k){return map[k]}).sort(function(a,b){return a.d-b.d}).slice(0,6);
+  }else{for(i=0;i<5;i++){var m=add(mon(t0),7*i);out.push({d:m,t:wt(m),week:true})}}
+  return out;
+}
+function bin(c){return '<div class="bin"><svg viewBox="0 0 60 80" width="64" height="86" aria-hidden="true"><path d="M10 22H50L46 68H14Z" fill="'+c+'"/><rect x="6" y="14" width="48" height="9" rx="3" fill="'+c+'"/><rect x="6" y="14" width="48" height="9" rx="3" fill="#fff" opacity=".2"/><rect x="24" y="30" width="12" height="3" rx="1.5" fill="#fff" opacity=".35"/><circle cx="17" cy="72" r="5" fill="#222"/><circle cx="43" cy="72" r="5" fill="#222"/></svg>'}
+function caddy(){return '<div class="bin"><svg viewBox="0 0 40 44" width="40" height="44" aria-hidden="true"><path d="M7 14H33L30 40H10Z" fill="#8a5a3a"/><rect x="5" y="9" width="30" height="6" rx="3" fill="#8a5a3a"/><rect x="5" y="9" width="30" height="6" rx="3" fill="#fff" opacity=".2"/><path d="M13 9C13 2 27 2 27 9" fill="none" stroke="#8a5a3a" stroke-width="2.5"/></svg><span>Food waste</span></div>'}
+function fmt(d,o){return d.toLocaleDateString("en-GB",o)}
+function render(){
+  var up=upcoming(),t=today(),n=up[0],tp=T[n.t],days=Math.round((n.d-t)/DAY);
+  $("note").hidden=!!cfg.day;
+  if(n.week){$("status").textContent="This week";$("when").textContent="Week of "+fmt(n.d,{weekday:"long",day:"numeric",month:"long"})}
+  else{
+    $("status").textContent=days===0?"Collection is today. Bin out by 6am":days===1?"Put it out tonight, ready by 6am":"Next collection";
+    $("when").textContent=(days===0?"Today, ":days===1?"Tomorrow, ":"")+fmt(n.d,{weekday:"long",day:"numeric",month:"long"})+(days>1?" (in "+days+" days)":"");
+  }
+  $("answer").textContent=tp.n;$("sub").textContent=tp.s;
+  $("bins").innerHTML=bin(tp.c)+'<span>'+tp.n+'</span></div>'+caddy();
+  $("up").innerHTML=up.slice(1).map(function(u){
+    return '<li><span class="d">'+(u.week?"Week of ":"")+fmt(u.d,{weekday:u.week?undefined:"short",day:"numeric",month:"short"})+'</span><span><span class="dot" style="background:'+T[u.t].c+'"></span>'+T[u.t].n+'</span></li>';
+  }).join("");
+}
+function read(){
+  cfg={day:$("day").value,group:$("group").value,over:$("over").value};
+  try{localStorage.setItem("whichbin2",JSON.stringify(cfg))}catch(e){}
+  try{if(location.hash)history.replaceState(null,"",location.pathname+location.search)}catch(e){}
+  render();
+}
+cfg=load();
+$("day").value=cfg.day||"";$("group").value=cfg.group||"1";$("over").value=cfg.over||"";
+if(!cfg.day)$("set").open=true;
+["day","group","over"].forEach(function(id){$(id).addEventListener("input",read)});
+$("share").addEventListener("click",function(){
+  var url=location.href.split("#")[0]+"#c="+btoa(unescape(encodeURIComponent(JSON.stringify(cfg)))),i=$("link");
+  i.value=url;i.hidden=false;$("linkl").hidden=false;i.focus();i.select();
+  try{navigator.clipboard.writeText(url)}catch(e){}
+});
+render();
+})();
+</script>
+</body>
+</html>
